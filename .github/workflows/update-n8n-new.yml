@@ -1,4 +1,4 @@
-name: Check for n8n Updates and Sync to Hugging Face Space
+name: Check n8n Updates and Sync to Hugging Face Space
 
 on:
   # schedule:
@@ -21,14 +21,14 @@ jobs:
       - name: Get latest n8n version
         id: get_version
         run: |
-          LATEST_VERSION=$(curl -s "https://github.com/n8n-io/n8n/releases.atom" | grep -oP 's/.*<title>n8n@([^<]+)<\/title>.*/\1/p' | sort -V | tail -n1)
+          LATEST_VERSION=$(curl -s "https://github.com/n8n-io/n8n/releases.atom" | sed -nE 's/.*<title>n8n@([^<]+).*/\1/p' | head -n 1)
           echo "Latest n8n version is: $LATEST_VERSION"
           echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
 
       - name: Get current version from Dockerfile
         id: get_current_version
         run: |
-          CURRENT_VERSION=$(grep -oP 's/.*<title>n8n@([^<]+)<\/title>.*/\1/p' Dockerfile)
+          CURRENT_VERSION=$(sed -nE 's/.*<title>n8n@([^<]+).*/\1/p' Dockerfile)
           echo "Current version in Dockerfile is: $CURRENT_VERSION"
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
