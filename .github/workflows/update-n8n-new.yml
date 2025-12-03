@@ -34,7 +34,8 @@ jobs:
 
       - name: Compare versions and update Dockerfile
         id: update_dockerfile
-        if: steps.get_version.outputs.version != steps.get_current_version.outputs.version && steps.get_version.outputs.version != ''
+        if: steps.get_version.outputs.version != steps.get_current_version.outputs.version && steps.get_version.outputs.version != '' && 
+        !contains(steps.get_version.outputs.version, '-')
         run: |
           echo "New version found. Updating Dockerfile..."
           sed -i "s/n8nio\/n8n:${{ steps.get_current_version.outputs.version }}/n8nio\/n8n:${{ steps.get_version.outputs.version }}/g" Dockerfile
