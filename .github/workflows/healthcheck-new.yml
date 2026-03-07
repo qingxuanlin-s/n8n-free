@@ -1,0 +1,59 @@
+name: Healthcheck
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Healthcheck and Restart Space
+        run: |-
+          # 定义重启 Hugging Face Space 的函数
+          restart_space() {
+            echo "::warning::检测到健康检查失败！正在尝试重启 Hugging Face Space..."
+            
+            # 调用 Hugging Face API 重启 Space
+            restart_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST "https://huggingface.co/api/spaces/${{ vars.HF_SPACE_ID }}/restart" \
+              -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}")
+            
+            if [ "$restart_status" -eq 200 ]; then
+              echo "::notice::成功触发 Space 重启指令。"
+            else
+              echo "::error::触发重启失败，Hugging Face API 返回 HTTP 状态码: $restart_status"
+            fi
+          }
+
+          # 发送请求并将 body 和 status code 分别捕获到变量中
+          http_response=$(curl -s -w "\n%{http_code}" "${{ vars.HF_SPACE_URL }}/healthz/readiness")
+          http_body=$(echo "$http_response" | sed '$d')
+          http_status=$(echo "$http_response" | tail -n1)
+
+          echo "http_body: $http_body"
+          echo "http_status: $http_status"
+
+          # 检查并安装 jq (如果缺失)
+          if ! command -v jq &> /dev/null; then
+              echo "jq could not be found, installing..."
+              sudo apt-get update && sudo apt-get install -y jq > /dev/null
+          fi
+
+          # 检查 HTTP 状态码
+          if [ "$http_status" -ne 200 ]; then
+            echo "::error::Health check failed with status code $http_status"
+            echo "Response body: $http_body"
+            restart_space # 触发重启
+            exit 1
+          fi
+
+          # 解析 JSON 并检查 status 字段
+          response_status=$(echo "$http_body" | jq -r '.status')
+
+          if [ "$response_status" != "ok" ]; then
+            echo "::error::Health check failed. Expected status 'ok', but got '$response_status'"
+            echo "Response body: $http_body"
+            restart_space # 触发重启
+            exit 1
+          fi
+
+          echo "Health check successful!"
