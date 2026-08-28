@@ -1,3 +1,3 @@
-FROM n8nio/n8n:2.37.1
+FROM n8nio/n8n:2.37.3
 
 USER node
